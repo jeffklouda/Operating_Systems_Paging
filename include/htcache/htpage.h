@@ -8,6 +8,7 @@
 #include <random>
 #include <stdexcept>
 #include <vector>
+#include <time.h>
 
 enum EvictionPolicy {
     EVICT_FIFO,
@@ -34,6 +35,10 @@ private:
     mutable std::mutex	Lock;   // Lock
 
     // TODO: Add bookkeeping for eviction
+    std::queue<size_t>  fifoQueue;
+    std::vector<time_t> lruVector;
+    std::vector<bool>   clockVector;
+    size_t              clockHand;
 
     size_t evict_fifo(size_t offset) {
     	// TODO: Implement FIFO eviction policy
@@ -58,19 +63,25 @@ private:
 public:
     HTPage(size_t n, EvictionPolicy p) {
     	// TODO: Initialize Entries
+    	clockHand = 0;
         HTPageEntry<KeyType, ValueType> temp;
         temp.Key = NULL;
         temp.Value = NULL;
         for (size_t i = 0; i < n; i++) {
             Entries.push_back(temp);
+            lruVector.push_back(0);
+            clockVector.push_back(0);
         }
     }
 
     HTPage(const HTPage<KeyType, ValueType>& other) {
     	// TODO: Copy instance variables
+    	clockHand = 0;
         EntriesType *otherEntries = other.getEntries();
         for (size_t i = 0; i < otherEntries->size(); i++) {
             Entries.push_back(otherEntries[i]);
+            lruVector.push_back(0);
+            clockVector.push_back(0);
         }
         Policy = other.getPolicy();
         
