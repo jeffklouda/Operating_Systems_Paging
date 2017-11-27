@@ -25,12 +25,13 @@ struct HTPageEntry {
 
 template <typename KeyType, typename ValueType>
 class HTPage {
+    
     typedef std::vector<HTPageEntry<KeyType, ValueType>> EntriesType;
 
 private:
     EntriesType		Entries;    // Individual entries
     EvictionPolicy	Policy;	    // Eviction policy
-    mutable std::mutex	Lock;	    // Lock
+    mutable std::mutex	Lock;   // Lock
 
     // TODO: Add bookkeeping for eviction
 
@@ -57,10 +58,22 @@ private:
 public:
     HTPage(size_t n, EvictionPolicy p) {
     	// TODO: Initialize Entries
+        HTPageEntry<KeyType, ValueType> temp;
+        temp.Key = NULL;
+        temp.Value = NULL;
+        for (size_t i = 0; i < n; i++) {
+            Entries.push_back(temp);
+        }
     }
 
     HTPage(const HTPage<KeyType, ValueType>& other) {
     	// TODO: Copy instance variables
+        EntriesType *otherEntries = other.getEntries();
+        for (size_t i = 0; i < otherEntries->size(); i++) {
+            Entries.push_back(otherEntries[i]);
+        }
+        Policy = other.getPolicy();
+        
     }
 
     ValueType get(const KeyType &key, size_t offset) {
@@ -74,4 +87,13 @@ public:
 
 	// TODO: Update entry
     }
+
+    *EntriesType getEntries() {
+        return &Entries;
+    }
+    
+    EvictionPolicy getPolicy () {
+        return Policy;
+    }
+
 };
