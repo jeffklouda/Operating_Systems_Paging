@@ -63,12 +63,17 @@ public:
         // TODO Determine virtual address, VPN, offset
         std::hash<KeyType> hash_func;
         size_t va = hash_func(key);
-        size_t vpn = va>>VPNShift;
+        size_t vpn = (va & VPNMask)>>VPNShift;
         size_t offset = va & OffsetMask;
 
         // TODO Retrieve value from HTPage
-        ValueType value = PageTable[vpn].get(key, offset);
-    	return value;
+        try {
+            ValueType value = PageTable[vpn].get(key, offset);
+    	}
+        catch (const std::out_of_range& oor) {
+            return Handler(key);
+        }
+        return value;
     }
 
     void	put(const KeyType &key, const ValueType &value) {
@@ -79,7 +84,7 @@ public:
         // TODO Determine virtual address, VPN, offset
         std::hash<KeyType> hash_func;
         size_t va = hash_func(key);
-        size_t vpn = va>>VPNShift;
+        size_t vpn = (va & VPNMask)>>VPNShift;
         size_t offset = va & OffsetMask;
 
         // TODO: Set key, value in HTPage

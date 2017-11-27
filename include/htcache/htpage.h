@@ -78,14 +78,48 @@ public:
 
     ValueType get(const KeyType &key, size_t offset) {
     	// TODO: Use linear probing to locate key
+        std::hash<KeyType> hash_func;
+        size_t key_hash = hash_func(key);
+        for (size_t i = offset; i < Entries.size(); i++) {
+            if (key_hash == hash_func(Entries[i].Key)) {
+                return Entries[i].Value;
+            }
+        }
+        for (size_t i = 0; i < offset; i++) {
+            if (key_hash == hash_func(Entries[i].Key)) {
+                return Entries[i].Value;
+            }
+        }
+        throw std::out_of_range ("oor");
+        return NULL;
     }
 
     void put(const KeyType &key, const ValueType &value, size_t offset) {
     	// TODO: Use linear probing to locate key
-
+        std::hash<KeyType> hash_func;
+        size_t key_hash = hash_func(key);
+        if (Entries[offset].Key == NULL) {
+            Entries[offset].Key = key;
+            Entries[offset].Value = value;
+            return;
+        }
+        for (size_t i = offset; i < Entries.size(); i++) {
+            if (key_hash == hash_func(Entries[i].Key) || Entries[i].Key == NULL) {
+                Entries[i].Key = key;
+                Entries[i].Value = value;
+                return;
+            }
+        }
+        for (size_t i = 0; i < offset; i++) {
+            if (key_hash == hash_func(Entries[i].Key) || Entries[i].Key == NULL) {
+                Entries[i].Key = key;
+                Entries[i].Value = value;
+                return;
+            }
+        }
     	// TODO: Evict an entry if HTPage is full
-
-	// TODO: Update entry
+           
+	    // TODO: Update entry
     }
 
     *EntriesType getEntries() {
