@@ -22,6 +22,7 @@ template <typename KeyType, typename ValueType>
 struct HTPageEntry {
     KeyType	Key;
     ValueType	Value;
+    bool valid;
     // TODO: Add bookkeeping for eviction
 };
 
@@ -56,14 +57,19 @@ private:
 
     size_t evict_lru(size_t offset) {
     	// TODO: Implement LRU eviction policy
-    	
+    	std::vector<time_t>::iterator lruIterator = std::min_element(lruVector.begin(), lruVector.end());
+        offset = lruIterator - lruVector.begin();
     	return offset;
     }
 
     size_t evict_clock(size_t offset) {
     	// TODO: Implement clock eviction policy
-    	std::vector<time_t>::iterator lruIterator = *std::min_element(lruVector.begin(), lruVector.end());
-        offset = lruIterator - lruVector.begin();
+        clockHand = offset;
+        while (clockVector[clockHand] == 1) {
+            clockVector[clockHand] = 0;
+            clockHand = (clockHand+1) % clockVector.size();
+        }
+        offset = clockHand;
         return offset;
     }
 
@@ -72,8 +78,7 @@ public:
     	// TODO: Initialize Entries
     	clockHand = 0;
         HTPageEntry <KeyType, ValueType> temp;
-        temp.Key = NULL;
-        temp.Value = NULL;
+        temp.valid = false;
         for (size_t i = 0; i < n; i++) {
             Entries.push_back(temp);
             lruVector.push_back(0);
@@ -84,14 +89,19 @@ public:
     HTPage(const HTPage<KeyType, ValueType>& other) {
     	// TODO: Copy instance variables
     	clockHand = 0;
+        
+
         //const std::vector<HTPageEntry<KeyType, ValueType>> *otherEntries = other.getEntries();
-        EntriesType *otherEntries = other.getEntries();
-        for (size_t i = 0; i < otherEntries->size(); i++) {
+        
+        EntriesType otherEntries = other.getEntries();
+        
+        for (size_t i = 0; i < otherEntries.size(); i++) {
             Entries.push_back(otherEntries[i]);
             lruVector.push_back(0);
             clockVector.push_back(0);
         }
         Policy = other.getPolicy();
+        
         
     }
 
@@ -100,12 +110,16 @@ public:
         std::hash<KeyType> hash_func;
         size_t key_hash = hash_func(key);
         for (size_t i = offset; i < Entries.size(); i++) {
-            if (key_hash == hash_func(Entries[i].Key)) {
+            if (Entries[i].valid && key_hash == hash_func(Entries[i].Key)) {
+                lruVector[i] = time(NULL);
+                clockVector[i] = true;
                 return Entries[i].Value;
             }
         }
         for (size_t i = 0; i < offset; i++) {
-            if (key_hash == hash_func(Entries[i].Key)) {
+            if (Entries[i].valid && key_hash == hash_func(Entries[i].Key)) {
+                lruVector[i] = time(NULL);
+                clockVector[i] = true;
                 return Entries[i].Value;
             }
         }
@@ -116,32 +130,76 @@ public:
     	// TODO: Use linear probing to locate key
         std::hash<KeyType> hash_func;
         size_t key_hash = hash_func(key);
-        if (Entries[offset].Key == NULL) {
+        if (Entries[offset].valid == false) {
+            fifoQueue.push(offset);
+            lruVector[offset] = time(NULL);
+            clockVector[offset] = true;
+            
             Entries[offset].Key = key;
             Entries[offset].Value = value;
+            Entries[offset].valid = true;
             return;
         }
         for (size_t i = offset; i < Entries.size(); i++) {
-            if (key_hash == hash_func(Entries[i].Key) || Entries[i].Key == NULL) {
+            if (Entries[i].valid == false || key_hash == hash_func(Entries[i].Key)) {
+                clockVector[i] = true;
+                lruVector[i] = time(NULL);
+                
+                if (Entries[i].valid == false)
+                    fifoQueue.push(i);
+                
                 Entries[i].Key = key;
                 Entries[i].Value = value;
+                Entries[i].valid = true;
                 return;
             }
         }
         for (size_t i = 0; i < offset; i++) {
-            if (key_hash == hash_func(Entries[i].Key) || Entries[i].Key == NULL) {
+            if (Entries[i].valid == false || key_hash == hash_func(Entries[i].Key)) {
+                lruVector[i] = time(NULL);
+                clockVector[i] = true;
+                
+                if (Entries[i].valid == false)
+                    fifoQueue.push(i);
+                
                 Entries[i].Key = key;
                 Entries[i].Value = value;
+                Entries[i].valid = true;
                 return;
             }
         }
     	// TODO: Evict an entry if HTPage is full
-           
+        switch (Policy) {
+            
+            case EVICT_FIFO:
+                offset = evict_fifo(offset);
+                break;
+            case EVICT_RANDOM:
+                offset = evict_random(offset);
+                break;
+            case EVICT_LRU:
+                offset = evict_lru(offset);
+                break;
+            case EVICT_CLOCK:
+                offset = evict_clock(offset);
+                break;
+            default:
+                offset = evict_fifo(offset);
+                break;
+        }
 	    // TODO: Update entry
+        fifoQueue.push(offset);
+        lruVector[offset] = time(NULL);
+        clockVector[offset] = true;
+        
+        Entries[offset].Key = key;
+        Entries[offset].Value = value;
+        Entries[offset].valid = true;
+        return;
     }
 
-    EntriesType *getEntries() const {
-        return &Entries;
+    EntriesType getEntries() const {
+        return Entries;
     }
     
     EvictionPolicy getPolicy () const {

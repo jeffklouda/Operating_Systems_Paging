@@ -34,10 +34,20 @@ private:
 
 public:
     HTCache(size_t addrlen, size_t pagesize, EvictionPolicy policy, HandlerFunc handler) {
-    	if (addrlen == 0) {
-    	    return;
+    	Handler = handler;
+        Hits          = 0;
+        Misses        = 0;
+        Policy        = policy;
+        AddressLength = addrlen;
+        PageSize      = pagesize;
+        if (addrlen == 0) {
+    	    Pages       = 0;
+            Addresses   = 0;
+            VPNShift    = 0;
+            VPNMask     = 0;
+            OffsetMask  = 0;
+            return;
 	    }
-
         // TODO Determine Addresses, Pages, VPNShift, VPNMask, OffsetMask
         Addresses = 1<<addrlen;
         if (pagesize == 0)
@@ -56,7 +66,7 @@ public:
     }
 
     ValueType	get(const KeyType &key) {
-    	if (PageTable.empty()) {
+        if (PageTable.empty()) {
     	    return Handler(key);
         }
 
@@ -72,13 +82,18 @@ public:
             value = PageTable[vpn].get(key, offset);
     	}
         catch (const std::out_of_range& oor) {
-            return Handler(key);
+            Misses++;
+            value = Handler(key);
+            put(key, value);
+            return value;
         }
+        Hits++;
         return value;
     }
 
     void	put(const KeyType &key, const ValueType &value) {
-    	if (PageTable.empty()) {
+    	std::lock_guard<std::mutex> lock(Lock);
+        if (PageTable.empty()) {
     	    return;
 	    }
 
