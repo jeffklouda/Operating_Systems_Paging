@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <cstdlib>
 #include <mutex>
 #include <queue>
@@ -42,29 +43,35 @@ private:
 
     size_t evict_fifo(size_t offset) {
     	// TODO: Implement FIFO eviction policy
-    	return offset;
+        offset = fifoQueue.front();
+        fifoQueue.pop(); 	
+        return offset;
     }
 
     size_t evict_random(size_t offset) {
     	// TODO: Implement random eviction policy
-    	return offset;
+        offset = rand() % Entries.size();      
+   	    return offset;
     }
 
     size_t evict_lru(size_t offset) {
     	// TODO: Implement LRU eviction policy
+    	
     	return offset;
     }
 
     size_t evict_clock(size_t offset) {
     	// TODO: Implement clock eviction policy
-    	return offset;
+    	std::vector<time_t>::iterator lruIterator = *std::min_element(lruVector.begin(), lruVector.end());
+        offset = lruIterator - lruVector.begin();
+        return offset;
     }
 
 public:
     HTPage(size_t n, EvictionPolicy p) {
     	// TODO: Initialize Entries
     	clockHand = 0;
-        HTPageEntry<KeyType, ValueType> temp;
+        HTPageEntry <KeyType, ValueType> temp;
         temp.Key = NULL;
         temp.Value = NULL;
         for (size_t i = 0; i < n; i++) {
@@ -77,6 +84,7 @@ public:
     HTPage(const HTPage<KeyType, ValueType>& other) {
     	// TODO: Copy instance variables
     	clockHand = 0;
+        //const std::vector<HTPageEntry<KeyType, ValueType>> *otherEntries = other.getEntries();
         EntriesType *otherEntries = other.getEntries();
         for (size_t i = 0; i < otherEntries->size(); i++) {
             Entries.push_back(otherEntries[i]);
@@ -102,7 +110,6 @@ public:
             }
         }
         throw std::out_of_range ("oor");
-        return NULL;
     }
 
     void put(const KeyType &key, const ValueType &value, size_t offset) {
@@ -133,11 +140,11 @@ public:
 	    // TODO: Update entry
     }
 
-    *EntriesType getEntries() {
+    EntriesType *getEntries() const {
         return &Entries;
     }
     
-    EvictionPolicy getPolicy () {
+    EvictionPolicy getPolicy () const {
         return Policy;
     }
 

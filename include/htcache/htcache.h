@@ -65,10 +65,11 @@ public:
         size_t va = hash_func(key);
         size_t vpn = (va & VPNMask)>>VPNShift;
         size_t offset = va & OffsetMask;
+        ValueType value;
 
         // TODO Retrieve value from HTPage
         try {
-            ValueType value = PageTable[vpn].get(key, offset);
+            value = PageTable[vpn].get(key, offset);
     	}
         catch (const std::out_of_range& oor) {
             return Handler(key);
