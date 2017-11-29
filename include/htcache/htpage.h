@@ -11,6 +11,8 @@
 #include <vector>
 #include <time.h>
 
+#include <iostream>
+
 enum EvictionPolicy {
     EVICT_FIFO,
     EVICT_RANDOM,
@@ -38,15 +40,17 @@ private:
 
     // TODO: Add bookkeeping for eviction
     std::queue<size_t>  fifoQueue;
-    std::vector<time_t> lruVector;
+    //std::vector<time_t> lruVector;
+    std::vector<size_t> lruVector;
     std::vector<bool>   clockVector;
     size_t              clockHand;
+    size_t              counter;
 
     size_t evict_fifo(size_t offset) {
     	// TODO: Implement FIFO eviction policy
         offset = fifoQueue.front();
         fifoQueue.pop(); 	
-        return offset;
+       return offset;
     }
 
     size_t evict_random(size_t offset) {
@@ -57,9 +61,9 @@ private:
 
     size_t evict_lru(size_t offset) {
     	// TODO: Implement LRU eviction policy
-    	std::vector<time_t>::iterator lruIterator = std::min_element(lruVector.begin(), lruVector.end());
+    	std::vector<size_t>::iterator lruIterator = std::min_element(lruVector.begin(), lruVector.end());
         offset = lruIterator - lruVector.begin();
-    	return offset;
+        return offset;
     }
 
     size_t evict_clock(size_t offset) {
@@ -76,9 +80,11 @@ private:
 public:
     HTPage(size_t n, EvictionPolicy p) {
     	// TODO: Initialize Entries
-    	clockHand = 0;
+    	counter = 0;
+        clockHand = 0;
         HTPageEntry <KeyType, ValueType> temp;
         temp.valid = false;
+        Policy = p;
         for (size_t i = 0; i < n; i++) {
             Entries.push_back(temp);
             lruVector.push_back(0);
@@ -88,7 +94,8 @@ public:
 
     HTPage(const HTPage<KeyType, ValueType>& other) {
     	// TODO: Copy instance variables
-    	clockHand = 0;
+    	counter = 0;
+        clockHand = 0;
         
 
         //const std::vector<HTPageEntry<KeyType, ValueType>> *otherEntries = other.getEntries();
@@ -111,14 +118,16 @@ public:
         size_t key_hash = hash_func(key);
         for (size_t i = offset; i < Entries.size(); i++) {
             if (Entries[i].valid && key_hash == hash_func(Entries[i].Key)) {
-                lruVector[i] = time(NULL);
+                //lruVector[i] = time(NULL);
+                set_lruVector(i);
                 clockVector[i] = true;
                 return Entries[i].Value;
             }
         }
         for (size_t i = 0; i < offset; i++) {
             if (Entries[i].valid && key_hash == hash_func(Entries[i].Key)) {
-                lruVector[i] = time(NULL);
+                //lruVector[i] = time(NULL);
+                set_lruVector(i);
                 clockVector[i] = true;
                 return Entries[i].Value;
             }
@@ -132,7 +141,8 @@ public:
         size_t key_hash = hash_func(key);
         if (Entries[offset].valid == false) {
             fifoQueue.push(offset);
-            lruVector[offset] = time(NULL);
+            //lruVector[offset] = time(NULL);
+            set_lruVector(offset);
             clockVector[offset] = true;
             
             Entries[offset].Key = key;
@@ -143,7 +153,8 @@ public:
         for (size_t i = offset; i < Entries.size(); i++) {
             if (Entries[i].valid == false || key_hash == hash_func(Entries[i].Key)) {
                 clockVector[i] = true;
-                lruVector[i] = time(NULL);
+                //lruVector[i] = time(NULL);
+                set_lruVector(i);
                 
                 if (Entries[i].valid == false)
                     fifoQueue.push(i);
@@ -156,7 +167,8 @@ public:
         }
         for (size_t i = 0; i < offset; i++) {
             if (Entries[i].valid == false || key_hash == hash_func(Entries[i].Key)) {
-                lruVector[i] = time(NULL);
+                //lruVector[i] = time(NULL);
+                set_lruVector(i);
                 clockVector[i] = true;
                 
                 if (Entries[i].valid == false)
@@ -171,25 +183,27 @@ public:
     	// TODO: Evict an entry if HTPage is full
         switch (Policy) {
             
-            case EVICT_FIFO:
+            case (EVICT_FIFO):
                 offset = evict_fifo(offset);
                 break;
-            case EVICT_RANDOM:
+            case (EVICT_RANDOM):
                 offset = evict_random(offset);
                 break;
-            case EVICT_LRU:
+            case (EVICT_LRU):
                 offset = evict_lru(offset);
                 break;
-            case EVICT_CLOCK:
+            case (EVICT_CLOCK):
                 offset = evict_clock(offset);
                 break;
             default:
-                offset = evict_fifo(offset);
+                //offset = evict_fifo(offset);
+                std::cout << "ERROR: Policy not set\n";
                 break;
         }
 	    // TODO: Update entry
         fifoQueue.push(offset);
-        lruVector[offset] = time(NULL);
+        //lruVector[offset] = time(NULL);
+        set_lruVector(offset);
         clockVector[offset] = true;
         
         Entries[offset].Key = key;
@@ -205,5 +219,15 @@ public:
     EvictionPolicy getPolicy () const {
         return Policy;
     }
-
+    
+    void set_lruVector(size_t offset) {
+        counter++;
+        if (counter == SIZE_MAX) {
+            counter = 0;
+            for (size_t i = 0; i < lruVector.size(); i++) {
+                lruVector[i] = 0;
+            }
+        }
+        lruVector[offset] = counter;
+    }
 };
