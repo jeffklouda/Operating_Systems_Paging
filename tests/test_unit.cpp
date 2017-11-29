@@ -119,13 +119,10 @@ int main () {
     clock_page.put (2, 2, 0);
     clock_page.put (3, 3, 0);
     clock_page.put (4, 4, 0);
-    lru_page.get (1, 0);
-    lru_page.get (2, 0);
-    lru_page.get (3, 0);
-    lru_page.put (5, 5, 0);
+    clock_page.put (5, 5, 0);
     success = false;
     try {
-        lru_page.get(4, 0);
+        clock_page.get(1, 0);
     }
     catch (const std::out_of_range& oor) {
         success = true;
@@ -134,7 +131,7 @@ int main () {
         str += "[X] ";
     else
         str += "[ ] ";
-    str += "HT Page LRU Eviction\n";
+    str += "HT Page Clock Eviction\n";
     
     std::cout << str << std::endl;
     return EXIT_SUCCESS;
